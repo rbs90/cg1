@@ -127,27 +127,54 @@ void CGContext::m_cgRasterizeStupidLine(int pipelineVertexOffset)
 	CGFragmentData fragment;
 	fragment.set(vertex0);
 
-	// draw a line from <from> to <to>
-	// Uebung 01. Aufgabe 3a)
 	int anstieg = to[1] - from[1];
 	int distance = (to[0] - from[0]);
-/*
-	std::cout 	<< "from=" << from[0] 
-			  	<< " to=" << to[0] 
-			  	<< " dist=" << distance 
-			  	<< " y-dist=" << to[1] - from[1] 
-				<< std::endl;
-*/		
-	for (int i = from[0]; i <= to[0]; i++) {
-		float perc = ((i-from[0]) * 1.0) / distance;
-		int y = anstieg * perc;
 
-		//std::cout << "i=" << i << " perc=" << perc << " anstieg=" << y << std::endl;
-		//std::cout << "x=" << i << " y=" << from[1] << std::endl;		
-		fragment.coordinates.set(i, from[1] + y);
-		// Push the fragment into the pipeline.
-		m_cgPushFragment(fragment);	
+
+	int last_y = from[0];
+	if (from[0] == to[0]) {
+		if (from[1] < to[1])
+			for (int i = from[1]; i <= to[1]; i++){
+				fragment.coordinates.set(from[0], i);
+				m_cgPushFragment(fragment);
+			}
+		else
+			for (int i = from[1]; i >= to[1]; i--){
+				fragment.coordinates.set(from[0], i);
+				m_cgPushFragment(fragment);
+			}
 	}
+	else {
+
+		for (int i = from[0]; i <= to[0]; i++) {
+			float perc = ((i - from[0]) * 1.0) / distance;
+
+			int y = anstieg * perc;
+
+			fragment.coordinates.set(i, from[1] + y);
+			// Push the fragment into the pipeline.
+			m_cgPushFragment(fragment);
+
+			/*
+			if (y >= last_y)
+			for (int v = last_y; v <= y; v++) {
+			fragment.coordinates.set(i, from[1] + v);
+			// Push the fragment into the pipeline.
+			m_cgPushFragment(fragment);
+			}
+			else
+			for (int v = last_y; v > y; v--) {
+			fragment.coordinates.set(i, from[1] + v);
+			// Push the fragment into the pipeline.
+			m_cgPushFragment(fragment);
+			}
+
+			last_y = y + 1;
+			*/
+		}
+	}
+
+
 
 	// Uebung01, Aufgabe 4a) (Zusatzaufgabe)
 	// ...

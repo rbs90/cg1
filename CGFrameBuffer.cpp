@@ -1,6 +1,7 @@
 #include "CGFrameBuffer.h"
 #include <stdlib.h> // for malloc
 #include <string.h> // for memcpy
+#include <iostream>
 
 //---------------------------------------------------------------------------
 // CGFRAMEBUFFER
@@ -41,31 +42,60 @@ bool CGFrameBuffer::CGBuffer4UB::reserve(int width, int height)
 	this->height = height;
 
 	// Uebung 01, Aufgabe 1a)
-	pBufferData = (unsigned char*) malloc(height * width * 4);
+	this->pBufferData = (unsigned char*) malloc(width * height * 4);
+
 	return true;
 }
 //---------------------------------------------------------------------------
 void CGFrameBuffer::CGBuffer4UB::get(int x, int y, float *rgba) const
 {
 	// Uebung 01, Aufgabe 1c)
-	for (int i = 0; i < 4; i++)
-		rgba[i] = 255 * pBufferData[(y * height + x) * 4 + i];
+
+	long pos = (y * this->width + x) * 4;
+	rgba[0] = this->pBufferData[pos + 0] / 255.0f;
+	rgba[1] = this->pBufferData[pos + 1] / 255.0f;
+	rgba[2] = this->pBufferData[pos + 2] / 255.0f;
+	rgba[3] = this->pBufferData[pos + 3] / 255.0f;
 }
 //---------------------------------------------------------------------------
 void CGFrameBuffer::CGBuffer4UB::set(int x, int y, const float *rgba)
 {
 	// Uebung 01, Aufgabe 1b)
-  	for (int i = 0; i < 4; i++)
-		pBufferData[(y * height + x) * 4 + i] = 255 * rgba[i];
+	//std::cout << "x: " << x << " y: " << y << " stelle: " << y * this->width + x << std::endl;
+
+	long pos = (y * this->width + x) * 4;
+
+	this->pBufferData[pos + 0] = (unsigned char)(int)(rgba[0] * 255);
+	this->pBufferData[pos + 1] = (unsigned char)(int)(rgba[1] * 255);
+	this->pBufferData[pos + 2] = (unsigned char)(int)(rgba[2] * 255);
+	this->pBufferData[pos + 3] = (unsigned char)(int)(rgba[3] * 255);
+
+	/*
+	std::cout << "rgba in :"
+		<< rgba[0] << " "
+		<< rgba[1] << " "
+		<< rgba[2] << " "
+		<< rgba[3] << " " << std::endl;
 	
+	float* rgba2 = new float[4];
+
+	get(x, y, rgba2);
+
+	std::cout << "rgba out:"
+		<< rgba2[0] << " "
+		<< rgba2[1] << " "
+		<< rgba2[2] << " "
+		<< rgba2[3] << " " << std::endl;
+
+	*/
 }
 //---------------------------------------------------------------------------
 void CGFrameBuffer::CGBuffer4UB::clear(const float *rgba)
 {
 	// Uebung 01, Aufgabe 1d)
-	for (int h = 0; h < height; h++)
-		for (int w = 0; w < width; w++)
-			set(h, w, rgba);
+	for (int x = 0; x < this->width; x++)
+		for (int y = 0; y < this->height; y++)
+			set(x, y, rgba);
 }
 //---------------------------------------------------------------------------
 unsigned char* CGFrameBuffer::CGBuffer4UB::getDataPointer() const
@@ -135,4 +165,3 @@ int CGFrameBuffer::CGBuffer1f::getHeight() const
 	return 0;
 }
 //---------------------------------------------------------------------------
-

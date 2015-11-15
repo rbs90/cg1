@@ -3,6 +3,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <time.h>           // for time() in srand()
+#include <string> 
 
 // Our includes.
 #include "CG1Helper.h"
@@ -12,10 +13,39 @@
 #include "CGMath.h"
 //---------------------------------------------------------------------------
 // Defines, globals, etc.
-#define FRAME_WIDTH  160   // Framebuffer width.
-#define FRAME_HEIGHT 100   // Framebuffer height.
-#define FRAME_SCALE  5     // Integer scaling factors (zoom).
+#define FRAME_WIDTH  50   // Framebuffer width.
+#define FRAME_HEIGHT 15   // Framebuffer height.
+#define FRAME_SCALE  15     // Integer scaling factors (zoom).
 CGContext *ourContext;
+
+int segments[10][7] = { // a, b, c, d, e, f, g (like https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/7Segment_24.svg/100px-7Segment_24.svg.png)
+		{ 1, 1, 1, 1, 1, 1, 0 }, //0
+		{ 0, 0, 0, 0, 1, 1, 0 }, //1
+		{ 1, 1, 0, 1, 1, 0, 1 }, //2
+		{ 1, 1, 1, 1, 0, 0, 1 }, //3
+		{ 0, 1, 1, 0, 0, 1, 1 }, //4
+		{ 1, 0, 1, 1, 0, 1, 1 }, //5
+		{ 1, 0, 1, 1, 1, 1, 1 }, //6
+		{ 1, 1, 1, 0, 0, 0, 0 }, //7
+		{ 1, 1, 1, 1, 1, 1, 1 }, //8
+		{ 1, 1, 1, 1, 1, 0, 1 }, //9
+};
+
+int segments_pos[7][4] = { // x1, x2, y1, y2
+		{ 1, 4, 0, 0 }, //a
+		{ 5, 5, 1, 4 }, //b
+		{ 5, 5, 6, 9 }, //c
+		{ 1, 4, 10, 10 }, //d
+		{ 0, 0, 6, 9 }, //e
+		{ 0, 0, 1, 4 }, //f
+		{ 1, 4, 5, 5 }, //g
+
+};
+
+// Vertex Attribute Arrays.
+#define VERTEX_COUNT 2
+float vertex[VERTEX_COUNT][3];	// x,y,z
+float color[VERTEX_COUNT][4];	  // r,g,b,a
 
 //---------------------------------------------------------------------------
 // generic "passthorugh" vertex program
@@ -48,10 +78,7 @@ typedef struct
 SpringenderPunkt a={1.0f, 1.0f, 20.0f, 0.0f};
 SpringenderPunkt b={0.5f, -0.75f, 70.0f, 50.0f};
 
-// Vertex Attribute Arrays.
-#define VERTEX_COUNT 2
-float vertex[VERTEX_COUNT][3];	// x,y,z
-float color[VERTEX_COUNT][4];	  // r,g,b,a
+
 
 //---------------------------------------------------------------------------
 void animateSpringenderPunkt(SpringenderPunkt& p)
@@ -63,6 +90,73 @@ void animateSpringenderPunkt(SpringenderPunkt& p)
 	p.x+=p.dx;
 	p.y+=p.dy;
 }
+
+//---------------------------------------------------------------------------
+//draws a 7-segment display at a given position with a given value
+void draw7segmentArray(int value, int x_start, int y_start){
+
+	y_start += 10; // begin from top
+
+	for (int i = 0; i < 7; i++){
+		vertex[0][0] = x_start + segments_pos[i][0];
+		vertex[0][1] = y_start - segments_pos[i][2];
+		vertex[0][2] = 0.0f;
+
+		vertex[1][0] = x_start + segments_pos[i][1];
+		vertex[1][1] = y_start - segments_pos[i][3];
+		vertex[1][2] = 0.0f;
+
+		if (segments[value][i]) {
+			color[0][0] = 1.0f;
+			color[0][1] = 0.1f;
+			color[0][2] = 0.1f;
+			color[0][3] = 1.0f;
+		}
+		else {
+			color[0][0] = 0.8f;
+			color[0][1] = 0.8f;
+			color[0][2] = 0.8f;
+			color[0][3] = 1.0f;
+		}
+
+		
+
+		ourContext->cgVertexAttribPointer(CG_POSITION_ATTRIBUTE, &vertex[0][0]);
+		ourContext->cgVertexAttribPointer(CG_COLOR_ATTRIBUTE, &color[0][0]);
+		ourContext->cgUseProgram(passthroughVertexProgram, passthroughFragmentProgram);
+		ourContext->cgDrawArrays(CG_LINES, 0, 2);
+	}
+}
+
+void drawLong7segmentNumber(long number, int start_x, int start_y) {
+	std::string numberString = std::to_string(number);
+
+	int count = 0;
+	for (char& c : numberString) {
+		int val = (int)c - 48; //convert current char back to int
+		draw7segmentArray(val, start_x + count * 8, start_y);
+		count++;
+	}
+}
+
+void makeScreenShot(){
+	std::cout << "Screenshot!" << std::endl;
+	unsigned char* color_buffer_copy = (unsigned char*) malloc(FRAME_WIDTH * FRAME_HEIGHT * 4);
+	ourContext->cgReadPixels(color_buffer_copy); 
+	cgImageWriteCG1("screenshot.cg1", color_buffer_copy, FRAME_WIDTH, FRAME_HEIGHT);
+	free(color_buffer_copy);
+}
+
+
+void programStep_7Segments() {
+	if (CG1Helper::isKeyReleased(83) || CG1Helper::isKeyReleased(115)) makeScreenShot(); // s or S released -> Screenshot
+
+	ourContext->cgClearColor(0.9f, 0.9f, 0.9f, 1.0f);
+	ourContext->cgClear(CG_COLOR_BUFFER_BIT);
+
+	drawLong7segmentNumber(242583, 2, 2);
+}
+
 //---------------------------------------------------------------------------
 // programStep_* functions are always our main application.
 void programStep_SpringenderPunkt()
@@ -76,14 +170,15 @@ void programStep_SpringenderPunkt()
 	
 	// render 
 	// Uebung01, Aufgabe 2a)
+	ourContext->cgClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	ourContext->cgClear(CG_COLOR_BUFFER_BIT);
 	// ourContext->cgClearColor(0.5f, 0.0f, 0.0f, 1.0f);
 	//ourContext->cgClearColor(1.0f, 1.0f, 0.0f, 1.0f);
 	//ourContext->cgClearColor(0.0f, 1.0f, 1.0f, 1.0f);
 	//ourContext->cgClearColor(1.0f, 0.0f, 1.0f, 1.0f);
 	//ourContext->cgClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-	ourContext->cgClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-	ourContext->cgClear(CG_COLOR_BUFFER_BIT);
 
+	
 	// prepare vertex array for point a
 	color[0][0]=1.0f;
 	color[0][1]=1.0f;
@@ -110,7 +205,12 @@ void programStep_SpringenderPunkt()
 	ourContext->cgUseProgram(passthroughVertexProgram, passthroughFragmentProgram);
 	// Uebung 01, Aufgabe 3b)
 	ourContext->cgDrawArrays(CG_LINES, 0, 2);
+	
+	_sleep(50);
 }
+
+
+
 //---------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -119,7 +219,7 @@ int main(int argc, char** argv)
 		fprintf(stderr,"failed to intialize CG1Helper!\n");
 		return -1;
 	}
-	CG1Helper::setProgramStep(programStep_SpringenderPunkt);
+	CG1Helper::setProgramStep(programStep_7Segments);
 	CG1Helper::runApplication();
 	return 0;
 }
